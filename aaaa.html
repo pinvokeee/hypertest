@@ -1,0 +1,106 @@
+<htmL>
+    <head>
+        <script src="tabl.js"></script>
+    </head>
+
+    <body>
+
+        <script>
+
+            const getTypeAndValue = (value) => {
+
+                if (typeof value === "string" && value.match(/^\d{2,4}[-/]\d{1,2}[-/]\d{1,2}/)) {
+                    if (new Date(value) == undefined) return { type: typeof value, value: value };
+                    return { type: "date", value: new Date(value) }
+                }
+
+                return { type: typeof value, value: value };
+            }
+
+            const createTable = (rows) => {
+
+                return rows.map(columns => Object.assign(...Object.keys(columns).map(key => {
+                    return { 
+                            [key]: getTypeAndValue(columns[key])
+                        }
+                })));
+            }
+
+            const calcGrouping = (table, groupingColumnNames, calcColumnNames, initFunc, calcFunc) => {
+
+                return Object.values(table.reduce((data, item) => 
+                {
+                    const key = groupingColumnNames.map(name => item[name].value).join("-");
+
+                    if (!data[key]) {
+
+                        const obj = structuredClone(item);
+                        const names = [...groupingColumnNames, ...calcColumnNames];
+
+                        data[key] = Object.assign(...names.map(name => ({[name]: obj[name]})));
+                        data[key] = initFunc(data, key);
+                    }
+
+                    data[key] = calcFunc(data, item, key);
+                    return data;
+
+                }, {}));
+            }
+
+            const countGroup = (table, groupingColumnNames, countColumnNames) => {
+                return calcGrouping(table, groupingColumnNames, countColumnNames, 
+                (data, key) => {
+                    countColumnNames.forEach(name => data[key][name] = ({ type: "CNT", value: 0}));
+                    return data[key];
+                }, 
+                (current, newItem, key) => {
+                    countColumnNames.forEach(name => current[key][name].value++);
+                    return current[key];
+                });
+            }
+            
+            const sumGroup = (table, groupingColumnNames, sumColumnNames) => {
+                return calcGrouping(table, groupingColumnNames, sumColumnNames, 
+                (data, key) => {
+                    sumColumnNames.forEach(name => data[key][name] = ({ type: "SUM", value: 0}));
+                    return data[key];
+                }, 
+                (current, newItem, key) => {
+                    sumColumnNames.forEach(name => current[key][name].value += newItem[name].value);
+                    return current[key];
+                });
+            }
+
+            const execution = (table, calcFunc) => {
+
+            }
+
+            const newFomulaColumn = (table, fomulaColumnSet) => {                
+                return table.forEach((data) => {
+                    fomulaColumnSet.forEach(([name, calcFunc]) => {
+                        const value = calcFunc(data);
+                        data[name] = getTypeAndValue(value);
+                    })                
+                });
+            }
+            
+            const source_table = createTable(globalTabHyperData);
+            // const a = countGroup(table, ["Order Date", "Discount"], ["Customer ID"]);
+            const b = countGroup(source_table,  [], ["Ship Date"]);
+
+            newFomulaColumn(source_table, 
+            [
+                ["test", (columns) => columns["Discount"].value * 3],
+                ["a", (columns) => columns["test"].value * 10],
+            ]);
+
+            const aa = sumGroup(source_table, [], ["test", "a"]);
+
+            console.log("aa");
+
+
+    </script>
+
+    </body>
+
+</htmL>
